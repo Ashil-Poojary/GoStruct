@@ -1,0 +1,48 @@
+# config.development.yaml - for structured config
+env: development
+
+server_port: 8080
+
+
+cors:
+  allowed_origins:
+    - "http://localhost:3000"
+    - "http://127.0.0.1:3000"
+  allowed_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+  allowed_headers:
+    - "Origin"
+    - "Content-Type"
+    - "Authorization"
+  allow_credentials: true
+
+
+
+databases:
+  db1:
+    user: gostructuser
+    password: gostructpass
+    name: gostruct_default
+    host: 127.0.0.1
+    port: 3306
+    migration: true
+
+  db2:
+    user: gostruct_rdb_user
+    password: strongpassword
+    name: gostruct_rdb
+    host: 127.0.0.1
+    port: 3306
+    migration: true
+
+  db3:
+    user: gostruct_analytics_user
+    password: analyticsPass
+    name: gostruct_analytics
+    host: 127.0.0.1
+    port: 3306
+    migration: false
+

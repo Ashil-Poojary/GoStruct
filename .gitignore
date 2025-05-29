@@ -1,0 +1,57 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Vendor directory (if you're not committing vendor deps)
+vendor/
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Dependency directories (when using Go modules)
+go.sum
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.*
+*.local
+
+# Docker
+docker-compose.override.yml
+*.pid
+
+# Testing and debug files
+coverage.out
+debug.test
+
+# Node.js-related files (if using frontend in same repo)
+node_modules/
+dist/
+
+# Cache and build
+bin/
+build/
+*.bak
+
+# Specific tools
+.bruno/                # Bruno API Client config
+
+create_gostruct.sh
