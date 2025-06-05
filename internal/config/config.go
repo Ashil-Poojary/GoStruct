@@ -8,10 +8,11 @@ import (
 )
 
 type Config struct {
-	Env        string
-	ServerPort string
-	Databases  map[string]DBConfig
-	CORS       CORSConfig
+	Env            string
+	ServerPort     string
+	Databases      map[string]DBConfig
+	CORS           CORSConfig
+	MicrosoftOAuth MicrosoftOAuthConfig
 }
 
 type DBConfig struct {
@@ -28,6 +29,13 @@ type CORSConfig struct {
 	AllowedMethods   []string
 	AllowedHeaders   []string
 	AllowCredentials bool
+}
+
+type MicrosoftOAuthConfig struct {
+	ClientID     string
+	ClientSecret string
+	Tenant       string
+	RedirectURI  string
 }
 
 var Cfg *Config
@@ -55,6 +63,14 @@ func LoadConfig() (*Config, error) {
 		log.Printf("Warning: failed to parse databases config: %v", err)
 	}
 
+	// Inside LoadConfig, before returning Cfg
+	microsoftConfig := MicrosoftOAuthConfig{
+		ClientID:     viper.GetString("microsoft.client_id"),
+		ClientSecret: viper.GetString("microsoft.client_secret"),
+		Tenant:       viper.GetString("microsoft.tenant"),
+		RedirectURI:  viper.GetString("microsoft.redirect_uri"),
+	}
+
 	Cfg = &Config{
 		Env:        viper.GetString("env"),
 		ServerPort: viper.GetString("PORT"),
@@ -65,6 +81,7 @@ func LoadConfig() (*Config, error) {
 			AllowedHeaders:   viper.GetStringSlice("cors.allowed_headers"),
 			AllowCredentials: viper.GetBool("cors.allow_credentials"),
 		},
+		MicrosoftOAuth: microsoftConfig,
 	}
 
 	if Cfg.ServerPort == "" {
