@@ -19,22 +19,16 @@ func NewUserRepository(db1 *gorm.DB, db2 *gorm.DB) *UserRepository {
 	}
 }
 
-// CreateUser uses GORM's Create method
-func (r *UserRepository) CreateUser(user *models.User) error {
-	return r.DB.Create(user).Error
-}
-
-// GetByEmail uses GORM Where + First
 func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
-	user := &models.User{}
-	err := r.DB.Where("email = ?", email).First(user).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
+	var user models.User
+	if err := r.DB.Where("email = ?", email).First(&user).Error; err != nil {
 		return nil, err
 	}
-	return user, nil
+	return &user, nil
+}
+
+func (r *UserRepository) CreateUser(user *models.User) error {
+	return r.DB.Create(user).Error
 }
 
 // GetByID uses GORM First by primary key

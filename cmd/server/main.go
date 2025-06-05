@@ -25,7 +25,7 @@ func main() {
 		log.Fatalf("Error initializing DB3: %v", err)
 	}
 
-	r := routes.SetupRouter()
+	r := routes.SetupRouter(cfg)
 	log.Printf("Starting server on :%s", cfg.ServerPort)
 	log.Fatal(r.Run(":" + cfg.ServerPort))
 }

@@ -54,4 +54,9 @@ build/
 # Specific tools
 .bruno/                # Bruno API Client config
 
+# Ignore development config file
+config/*
+config/config.development.yaml
+
+
 create_gostruct.sh

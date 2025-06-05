@@ -1,0 +1,22 @@
+meta {
+  name: oauth
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{BASE_URL}}auth/microsoft/login
+  body: json
+  auth: inherit
+}
+
+tests {
+  let responseData = res.getBody().data;
+   
+  if(responseData){
+    let accessToken = responseData.access_token;
+    let refreshToken = responseData.refresh_token;
+    bru.setEnvVar("JWT_TOKEN", accessToken);
+    bru.setEnvVar("REFRESH_TOKEN", refreshToken);
+  }
+}
