@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/joho/godotenv"
@@ -10,9 +11,11 @@ import (
 type Config struct {
 	Env            string
 	ServerPort     string
-	Databases      map[string]DBConfig
+	DefaultDB      DBConfig `mapstructure:"default_db"`
+	ReplicaDB      DBConfig `mapstructure:"replica_db"`
+	ProdDB         DBConfig `mapstructure:"prod_db"`
 	CORS           CORSConfig
-	MicrosoftOAuth MicrosoftOAuthConfig
+	MicrosoftOAuth MicrosoftOAuthConfig `mapstructure:"microsoft"`
 }
 
 type DBConfig struct {
@@ -41,53 +44,73 @@ type MicrosoftOAuthConfig struct {
 var Cfg *Config
 
 func LoadConfig() (*Config, error) {
-	// Load .env first
-	if err := godotenv.Load(".env.development"); err != nil {
-		log.Printf("Warning: .env.development not loaded: %v", err)
-	}
-
-	viper.SetConfigName("config.development")
+	// Step 1: Set up Viper to read config file first (without loading .env yet)
+	viper.SetConfigName("config.development") // default fallback if no ENV yet
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("config") // recommended subdirectory
-	viper.AddConfigPath(".")      // fallback if not in /config
+	viper.AddConfigPath("config")
+	viper.AddConfigPath(".")
+	viper.AutomaticEnv()
 
+	// Read config file (ignore error for now to get env)
+	_ = viper.ReadInConfig()
+
+	// Step 2: Read 'env' from config or fallback to 'development'
+	env := viper.GetString("env")
+	if env == "" {
+		env = "development"
+	}
+	log.Printf("[INFO] Environment detected from config: %s", env)
+
+	// Step 3: Load .env file based on detected env
+	envFile := ".env." + env
+	if err := godotenv.Load(envFile); err != nil {
+		log.Printf("[WARNING] Could not load %s file: %v", envFile, err)
+	} else {
+		log.Printf("[INFO] Loaded environment variables from %s", envFile)
+	}
+
+	// Step 4: Now set config name based on detected env and re-read config for overrides
+	viper.SetConfigName("config." + env)
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read config file for env '%s': %w", env, err)
+	}
+	log.Printf("[INFO] Loaded configuration from %s", viper.ConfigFileUsed())
+
+	// Step 5: Bind env vars to override config keys
+	bindings := map[string]string{
+		"env":                     "ENV",
+		"server_port":             "PORT",
+		"microsoft.client_id":     "MICROSOFT_CLIENT_ID",
+		"microsoft.client_secret": "MICROSOFT_CLIENT_SECRET",
+		"microsoft.tenant":        "MICROSOFT_TENANT",
+		"microsoft.redirect_uri":  "MICROSOFT_REDIRECT_URI",
+		"default_db.user":         "DEFAULT_DB_USER",
+		"default_db.password":     "DEFAULT_DB_PASS",
+		"replica_db.user":         "REPLICA_DB_USER",
+		"replica_db.password":     "REPLICA_DB_PASS",
+		"prod_db.user":            "PROD_DB_USER",
+		"prod_db.password":        "PROD_DB_PASS",
 	}
 
-	viper.AutomaticEnv() // Allow ENV override
-
-	// Load multiple DB configs into a map
-	dbConfigs := make(map[string]DBConfig)
-	if err := viper.UnmarshalKey("databases", &dbConfigs); err != nil {
-		log.Printf("Warning: failed to parse databases config: %v", err)
+	for key, envVar := range bindings {
+		if err := viper.BindEnv(key, envVar); err != nil {
+			log.Printf("[ERROR] Failed to bind env var %s: %v", envVar, err)
+		}
 	}
 
-	// Inside LoadConfig, before returning Cfg
-	microsoftConfig := MicrosoftOAuthConfig{
-		ClientID:     viper.GetString("microsoft.client_id"),
-		ClientSecret: viper.GetString("microsoft.client_secret"),
-		Tenant:       viper.GetString("microsoft.tenant"),
-		RedirectURI:  viper.GetString("microsoft.redirect_uri"),
+	// Step 6: Unmarshal config into struct
+	var cfg Config
+	if err := viper.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	Cfg = &Config{
-		Env:        viper.GetString("env"),
-		ServerPort: viper.GetString("PORT"),
-		Databases:  dbConfigs,
-		CORS: CORSConfig{
-			AllowedOrigins:   viper.GetStringSlice("cors.allowed_origins"),
-			AllowedMethods:   viper.GetStringSlice("cors.allowed_methods"),
-			AllowedHeaders:   viper.GetStringSlice("cors.allowed_headers"),
-			AllowCredentials: viper.GetBool("cors.allow_credentials"),
-		},
-		MicrosoftOAuth: microsoftConfig,
+	// Step 7: Fallback default port
+	if cfg.ServerPort == "" {
+		cfg.ServerPort = "8080"
+		log.Println("[INFO] Using default port 8080 as PORT was not set")
 	}
 
-	if Cfg.ServerPort == "" {
-		Cfg.ServerPort = "8080" // fallback default
-	}
-
-	log.Println("Environment:", Cfg.Env)
+	Cfg = &cfg
+	log.Printf("[INFO] Final configuration loaded for environment: %s", cfg.Env)
 	return Cfg, nil
 }

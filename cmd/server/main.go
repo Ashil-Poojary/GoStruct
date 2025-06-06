@@ -15,14 +15,14 @@ func main() {
 	}
 
 	// init db
-	if err := db.InitDB1(cfg.Databases["db1"]); err != nil {
-		log.Fatalf("Error initializing DB1: %v", err)
+	if err := db.InitDefaultDB(cfg.DefaultDB); err != nil {
+		log.Fatalf("Error initializing DefaultDB: %v", err)
 	}
-	if err := db.InitDB2(cfg.Databases["db2"]); err != nil {
-		log.Fatalf("Error initializing DB2: %v", err)
+	if err := db.InitReplicaDB(cfg.ReplicaDB); err != nil {
+		log.Fatalf("Error initializing ReplicaDB: %v", err)
 	}
-	if err := db.InitDB3(cfg.Databases["db3"]); err != nil {
-		log.Fatalf("Error initializing DB3: %v", err)
+	if err := db.InitProdDB(cfg.ProdDB); err != nil {
+		log.Fatalf("Error initializing ProdDB: %v", err)
 	}
 
 	r := routes.SetupRouter(cfg)

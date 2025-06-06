@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"github.com/ashil-poojary/gostruct/internal/auth"
 	"github.com/ashil-poojary/gostruct/internal/config"
 	"github.com/ashil-poojary/gostruct/internal/db"
 	"github.com/ashil-poojary/gostruct/internal/handlers"
@@ -27,7 +26,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	orderHandler := handlers.NewOrderHandler(orderRepo)
 
 	// Get Microsoft OAuth handlers
-	msLogin, msCallback := auth.NewMicrosoftOAuthHandler(cfg.MicrosoftOAuth)
+	msLogin, msCallback := handlers.NewMicrosoftOAuthHandler(cfg.MicrosoftOAuth)
 
 	v1 := r.Group("/v1")
 	{
@@ -36,8 +35,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			public.POST("/login", authHandler.Login)
 			public.POST("/refresh", authHandler.RefreshToken)
 			public.POST("/logout", authHandler.Logout)
-			public.GET("/microsoft/login", gin.WrapF(msLogin))
-			public.GET("/microsoft/callback", gin.WrapF(msCallback))
+			public.GET("/microsoft/login", msLogin)
+			public.GET("/microsoft/callback", msCallback)
 		}
 
 		protected := v1.Group("/")

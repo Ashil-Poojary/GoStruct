@@ -31,7 +31,7 @@ func connectDB(cfg config.DBConfig) (*gorm.DB, error) {
 	return db, nil
 }
 
-func InitDB1(cfg config.DBConfig) error {
+func InitDefaultDB(cfg config.DBConfig) error {
 	db, err := connectDB(cfg)
 	if err != nil {
 		return err
@@ -39,7 +39,7 @@ func InitDB1(cfg config.DBConfig) error {
 	DB1 = db
 
 	if cfg.Migration {
-		log.Println("Migrating DB1 models...")
+		log.Println("Migrating DefaultDB models...")
 		if err := db.AutoMigrate(
 			&models.User{},
 			&models.RefreshToken{},
@@ -55,7 +55,7 @@ func InitDB1(cfg config.DBConfig) error {
 	return nil
 }
 
-func InitDB2(cfg config.DBConfig) error {
+func InitReplicaDB(cfg config.DBConfig) error {
 	db, err := connectDB(cfg)
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ func InitDB2(cfg config.DBConfig) error {
 	DB2 = db
 
 	if cfg.Migration {
-		log.Println("Migrating DB2 models...")
+		log.Println("Migrating ReplicaDB models...")
 		if err := db.AutoMigrate(
 			&models.RefreshToken{},
 			&models.User{},
@@ -80,7 +80,7 @@ func InitDB2(cfg config.DBConfig) error {
 	return nil
 }
 
-func InitDB3(cfg config.DBConfig) error {
+func InitProdDB(cfg config.DBConfig) error {
 	db, err := connectDB(cfg)
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func InitDB3(cfg config.DBConfig) error {
 	DB3 = db
 
 	if cfg.Migration {
-		log.Println("Migrating DB3 models...")
+		log.Println("Migrating ProdDB models...")
 		if err := db.AutoMigrate(
 			&models.User{},
 			&models.RefreshToken{},
