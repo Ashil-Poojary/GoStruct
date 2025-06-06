@@ -3,114 +3,114 @@ package config
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Env            string
-	ServerPort     string
-	DefaultDB      DBConfig `mapstructure:"default_db"`
-	ReplicaDB      DBConfig `mapstructure:"replica_db"`
-	ProdDB         DBConfig `mapstructure:"prod_db"`
-	CORS           CORSConfig
+	Env            string               `mapstructure:"env"`
+	ServerPort     string               `mapstructure:"server_port"`
+	DefaultDB      DBConfig             `mapstructure:"default_db"`
+	ReplicaDB      DBConfig             `mapstructure:"replica_db"`
+	ProdDB         DBConfig             `mapstructure:"prod_db"`
+	CORS           CORSConfig           `mapstructure:"cors"`
 	MicrosoftOAuth MicrosoftOAuthConfig `mapstructure:"microsoft"`
 }
 
 type DBConfig struct {
-	User      string
-	Password  string
-	Host      string
-	Port      int
-	Name      string
-	Migration bool
+	User      string `mapstructure:"user"`
+	Password  string `mapstructure:"password"`
+	Host      string `mapstructure:"host"`
+	Port      int    `mapstructure:"port"`
+	Name      string `mapstructure:"name"`
+	Migration bool   `mapstructure:"migration"`
 }
 
 type CORSConfig struct {
-	AllowedOrigins   []string
-	AllowedMethods   []string
-	AllowedHeaders   []string
-	AllowCredentials bool
+	AllowedOrigins   []string `mapstructure:"allowed_origins"`
+	AllowedMethods   []string `mapstructure:"allowed_methods"`
+	AllowedHeaders   []string `mapstructure:"allowed_headers"`
+	AllowCredentials bool     `mapstructure:"allow_credentials"`
 }
 
 type MicrosoftOAuthConfig struct {
-	ClientID     string
-	ClientSecret string
-	Tenant       string
-	RedirectURI  string
+	ClientID     string `mapstructure:"client_id"`
+	ClientSecret string `mapstructure:"client_secret"`
+	Tenant       string `mapstructure:"tenant"`
+	RedirectURI  string `mapstructure:"redirect_uri"`
 }
 
 var Cfg *Config
 
 func LoadConfig() (*Config, error) {
-	// Step 1: Set up Viper to read config file first (without loading .env yet)
-	viper.SetConfigName("config.development") // default fallback if no ENV yet
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	// Load base config
+	viper.SetConfigName("config.development")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("config")
 	viper.AddConfigPath(".")
-	viper.AutomaticEnv()
 
-	// Read config file (ignore error for now to get env)
-	_ = viper.ReadInConfig()
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("failed to read base config: %w", err)
+	}
 
-	// Step 2: Read 'env' from config or fallback to 'development'
+	// Determine environment (default to development)
 	env := viper.GetString("env")
 	if env == "" {
 		env = "development"
 	}
-	log.Printf("[INFO] Environment detected from config: %s", env)
 
-	// Step 3: Load .env file based on detected env
+	// Load .env.{env}
 	envFile := ".env." + env
-	if err := godotenv.Load(envFile); err != nil {
-		log.Printf("[WARNING] Could not load %s file: %v", envFile, err)
-	} else {
-		log.Printf("[INFO] Loaded environment variables from %s", envFile)
+	if err := godotenv.Overload(envFile); err != nil {
+		log.Printf("Warning: Could not load %s: %v", envFile, err)
 	}
 
-	// Step 4: Now set config name based on detected env and re-read config for overrides
+	// Load config.{env}.yaml
 	viper.SetConfigName("config." + env)
-	if err := viper.ReadInConfig(); err != nil {
-		return nil, fmt.Errorf("failed to read config file for env '%s': %w", env, err)
+	if err := viper.MergeInConfig(); err != nil {
+		return nil, fmt.Errorf("failed to read %s config: %w", env, err)
 	}
-	log.Printf("[INFO] Loaded configuration from %s", viper.ConfigFileUsed())
 
-	// Step 5: Bind env vars to override config keys
-	bindings := map[string]string{
-		"env":                     "ENV",
+	// Bind common environment variables
+	envBindings := map[string]string{
 		"server_port":             "PORT",
+		"default_db.user":         "DEFAULT_DB_USER",
+		"default_db.password":     "DEFAULT_DB_PASS",
+		"default_db.name":         "DEFAULT_DB_NAME",
+		"replica_db.user":         "REPLICA_DB_USER",
+		"replica_db.password":     "REPLICA_DB_PASS",
+		"replica_db.name":         "REPLICA_DB_NAME",
+		"prod_db.user":            "PROD_DB_USER",
+		"prod_db.password":        "PROD_DB_PASS",
+		"prod_db.name":            "PROD_DB_NAME",
 		"microsoft.client_id":     "MICROSOFT_CLIENT_ID",
 		"microsoft.client_secret": "MICROSOFT_CLIENT_SECRET",
 		"microsoft.tenant":        "MICROSOFT_TENANT",
 		"microsoft.redirect_uri":  "MICROSOFT_REDIRECT_URI",
-		"default_db.user":         "DEFAULT_DB_USER",
-		"default_db.password":     "DEFAULT_DB_PASS",
-		"replica_db.user":         "REPLICA_DB_USER",
-		"replica_db.password":     "REPLICA_DB_PASS",
-		"prod_db.user":            "PROD_DB_USER",
-		"prod_db.password":        "PROD_DB_PASS",
 	}
 
-	for key, envVar := range bindings {
-		if err := viper.BindEnv(key, envVar); err != nil {
-			log.Printf("[ERROR] Failed to bind env var %s: %v", envVar, err)
+	for key, env := range envBindings {
+		if err := viper.BindEnv(key, env); err != nil {
+			log.Printf("Warning: failed to bind env var %s: %v", env, err)
 		}
 	}
 
-	// Step 6: Unmarshal config into struct
+	// Unmarshal final config into struct
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// Step 7: Fallback default port
+	// Fallbacks and validation
 	if cfg.ServerPort == "" {
 		cfg.ServerPort = "8080"
-		log.Println("[INFO] Using default port 8080 as PORT was not set")
 	}
 
 	Cfg = &cfg
-	log.Printf("[INFO] Final configuration loaded for environment: %s", cfg.Env)
 	return Cfg, nil
 }

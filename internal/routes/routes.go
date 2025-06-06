@@ -18,15 +18,15 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	}
 
 	userRepo := repository.NewUserRepository(db.DB1, db.DB2)
-	refreshTokenRepo := repository.NewAuthRepo(db.DB1)
+	authRepo := repository.NewAuthRepo(db.DB1)
 	orderRepo := repository.NewOrderRepository(db.DB1, db.DB2)
 
-	authHandler := handlers.NewAuthHandler(userRepo, refreshTokenRepo)
+	authHandler := handlers.NewAuthHandler(userRepo, authRepo)
 	userHandler := handlers.NewUserHandler(userRepo)
 	orderHandler := handlers.NewOrderHandler(orderRepo)
 
 	// Get Microsoft OAuth handlers
-	msLogin, msCallback := handlers.NewMicrosoftOAuthHandler(cfg.MicrosoftOAuth)
+	msHandler := handlers.NewOAuthHandler(userRepo, authRepo, cfg.MicrosoftOAuth)
 
 	v1 := r.Group("/v1")
 	{
@@ -35,8 +35,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			public.POST("/login", authHandler.Login)
 			public.POST("/refresh", authHandler.RefreshToken)
 			public.POST("/logout", authHandler.Logout)
-			public.GET("/microsoft/login", msLogin)
-			public.GET("/microsoft/callback", msCallback)
+			public.GET("/microsoft/login", msHandler.MicrosoftLogin)
+			public.GET("/microsoft/callback", msHandler.MicrosoftCallback)
 		}
 
 		protected := v1.Group("/")
